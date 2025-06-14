@@ -11,8 +11,9 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+
 //https://github.com/alexarchambault/native-terminal/blob/main/native/jdk22/src/io/github/alexarchambault/nativeterm/internal/CLibrary.java
-public class MacOSTerminal {
+public class MacOrUnixTerminal {
 
     static Linker linker = Linker.nativeLinker();
     static SymbolLookup loader = SymbolLookup.loaderLookup();
@@ -26,22 +27,29 @@ public class MacOSTerminal {
     // https://www.man7.org/linux/man-pages/man3/isatty.3.html
     static MethodHandle isatty = linker.downcallHandle(
             lookup.find("isatty").get(), FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
+
+    static boolean isatty() {
+        try {
+            return ((int) isatty.invoke(1) == 1);
+        } catch (Throwable e) {
+            return false;
+        }
+    }
+
     // https://man7.org/linux/man-pages/man3/tcsetattr.3p.html
     static MethodHandle tcsetattr = linker.downcallHandle(
             lookup.find("tcsetattr").get(),
-                FunctionDescriptor.of(
-    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+            FunctionDescriptor.of(
+                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
     // https://man7.org/linux/man-pages/man3/tcgetattr.3p.html
-    static MethodHandle  tcgetattr = linker.downcallHandle(
+    static MethodHandle tcgetattr = linker.downcallHandle(
             lookup.find("tcgetattr").get(),
-                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
     // https://man7.org/linux/man-pages/man3/ttyname.3.html
     static MethodHandle ttyname_r = linker.downcallHandle(
             lookup.find("ttyname_r").get(),
-                FunctionDescriptor.of(
-    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
-
-
+            FunctionDescriptor.of(
+                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
 
 
     static VarHandle lookupVarHandle(MemoryLayout.PathElement... elements) {
@@ -51,7 +59,8 @@ public class MacOSTerminal {
     }
 
     static class winsize {
-        static int  TIOCGWINSZ;
+        static int TIOCGWINSZ;
+
         static {
             String osName = System.getProperty("os.name");
             if (osName.startsWith("Linux")) {
@@ -74,11 +83,13 @@ public class MacOSTerminal {
                 throw new UnsupportedOperationException();
             }
         }
+
         static final GroupLayout LAYOUT;
         private static final VarHandle ws_col;
         private static final VarHandle ws_row;
         private static final VarHandle ws_xpixels;
         private static final VarHandle ws_ypixels;
+
         static {
             LAYOUT = MemoryLayout.structLayout(
                     ValueLayout.JAVA_SHORT.withName("ws_row"),
@@ -93,9 +104,10 @@ public class MacOSTerminal {
 
         private final MemorySegment seg;
         boolean ok;
+
         winsize() {
             seg = Arena.ofAuto().allocate(LAYOUT);
-            ok =  get();
+            ok = get();
         }
 
         short ws_col() {
@@ -105,6 +117,7 @@ public class MacOSTerminal {
         short ws_row() {
             return (short) ws_row.get(seg);
         }
+
         short ws_xpixels() {
             return (short) ws_xpixels.get(seg);
         }
@@ -114,20 +127,26 @@ public class MacOSTerminal {
         }
 
         public boolean get() {
-            int fd =1; //stdout
+            int fd = 1; //stdout
             try {
                 return (int) ioctl.invoke(fd, (long) winsize.TIOCGWINSZ, seg) == 0;
             } catch (Throwable e) {
-               return false;
+                return false;
             }
         }
     }
-        public static void main(String[] args) throws Throwable {
-                winsize ws = new winsize();
-                if (ws.ok){
-                    System.out.println("row " + ws.ws_row()+" col " + ws.ws_col()+ " x_pixels " + ws.ws_xpixels()+" y_pixels " + ws.ws_ypixels());
-                }else{
-                    System.out.println("ioctl failed ");
-                }
+
+    public static void main(String[] args) throws Throwable {
+        if (isatty()) {
+            winsize ws = new winsize();
+            if (ws.ok) {
+                System.out.println("row " + ws.ws_row() + " col " + ws.ws_col() + " x_pixels " + ws.ws_xpixels() + " y_pixels " + ws.ws_ypixels());
+            } else {
+                System.out.println("ioctl failed ");
+            }
+        } else {
+            System.out.println("not a tty ");
+
         }
     }
+}
