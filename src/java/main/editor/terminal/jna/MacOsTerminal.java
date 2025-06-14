@@ -30,9 +30,6 @@ public class MacOsTerminal implements Terminal {
         termios.c_iflag &= ~(MacOsTerminal.LibC.IXON | MacOsTerminal.LibC.ICRNL);
         termios.c_oflag &= ~(MacOsTerminal.LibC.OPOST);
 
-       /* termios.c_cc[LibC.VMIN] = 0;
-        termios.c_cc[LibC.VTIME] = 1;*/
-
         MacOsTerminal.LibC.INSTANCE.tcsetattr(MacOsTerminal.LibC.SYSTEM_OUT_FD, MacOsTerminal.LibC.TCSAFLUSH, termios);
     }
 
@@ -61,7 +58,7 @@ public class MacOsTerminal implements Terminal {
     interface LibC extends Library {
 
         int SYSTEM_OUT_FD = 0;
-        int ISIG = 1, ICANON = 2, ECHO = 10, TCSAFLUSH = 2,
+        int ISIG = 1, ICANON = 2, ECHO = 10, TCSANOW =0, TCSADRAIN=1, TCSAFLUSH = 2,
                 IXON = 2000, ICRNL = 400, IEXTEN = 100000, OPOST = 1, VMIN = 6, VTIME = 5, TIOCGWINSZ = 0x40087468;
 
         // we're loading the C standard library for POSIX systems

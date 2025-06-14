@@ -4,31 +4,39 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-record Key(int v) {
+public record Key(int v, String name, Key.Type type) {
+    enum Type{
+        NORMAL, CTRL, CURSOR_MOVE,ACTION
+    }
     static Map<Integer, Key> cache = new HashMap<>();
+    static Key of(int v, String name, Type type) {
+        return cache.computeIfAbsent(v, k -> new Key(v, name, type));
+    }
     static Key of(int v) {
-        return cache.computeIfAbsent(v, k -> new Key(v));
+        return cache.computeIfAbsent(v, k -> new Key(v, "\"" + ((char)v)+"\"", Type.NORMAL));
     }
     static private Key ctrl(int v) {
-        return Key.of(v & 0x1f);
+        return Key.of(v & 0x1f, "CTRL<"+((char)v)+">", Type.CTRL);
     }
-    static final Key ARROW_UP = Key.of(1000);
-    static final Key ARROW_DOWN = Key.of(1001);
-    static final Key ARROW_LEFT = Key.of(1002);
-    static final Key ARROW_RIGHT = Key.of(1003);
-    static final Key HOME = Key.of(1004);
-    static final Key END = Key.of(1005);
-    static final Key PAGE_UP = Key.of(1006);
-    static final Key PAGE_DOWN = Key.of(1007);
-    static final Key DEL = Key.of(1008);
-    static final Key ESC = Key.of('\033');
-    static final Key NL = Key.of(13);
+    static final Key ARROW_UP = Key.of(1000, "ARROW_UP", Type.CURSOR_MOVE);
+    static final Key ARROW_DOWN = Key.of(1001, "ARROW_DOWN",Type.CURSOR_MOVE);
+    static final Key ARROW_LEFT = Key.of(1002, "ARROW_LEFT",Type.CURSOR_MOVE);
+    static final Key ARROW_RIGHT = Key.of(1003,  "ARROW_RIGHT",Type.CURSOR_MOVE);
+    static final Key HOME = Key.of(1004,  "HOME",Type.CURSOR_MOVE);
+    static final Key END = Key.of(1005, "END",Type.CURSOR_MOVE);
+    static final Key PAGE_UP = Key.of(1006,  "PAGE_UP",Type.CURSOR_MOVE);
+    static final Key PAGE_DOWN = Key.of(1007,  "PAGE_DOWN",Type.CURSOR_MOVE);
+    static final Key DEL = Key.of(1008,  "DEL",Type.ACTION);
+    static final Key ESC = Key.of('\033', "ESC", Type.ACTION);
+    static final Key NL = Key.of(13,"NL",Type.ACTION);
     static final Key CtrlQ = Key.ctrl('q');
     static final Key CtrlF = Key.ctrl('f');
-    static final Key BACKSPACE = Key.of(127);
+    static final Key BACKSPACE = Key.of(127, "BACKSPACE", Type.ACTION);
     public static final Key CtrlS = ctrl('s') ;
     public static final Key CtrlH = ctrl('h');
-    static Key read() {
+    public static final Key OSBRACE = Key.of('[');
+    public static final Key _O = Key.of('O');
+    public static Key read() {
         int i = -1;
         try {
             i = System.in.read();
@@ -44,13 +52,13 @@ record Key(int v) {
             }
 
             var nextKey = read();
-            if (nextKey != Key.of('[') && nextKey != Key.of('O')) {
+            if (nextKey != OSBRACE && nextKey != _O) {
                 return nextKey;
             }
 
             Key yetAnotherKey = read();
 
-            if (nextKey == Key.of('[')) {
+            if (nextKey == OSBRACE) {
                 return switch (yetAnotherKey.v()) {
                     case 'A' -> Key.ARROW_UP;  // e.g. esc[A == arrow_up
                     case 'B' -> Key.ARROW_DOWN;
