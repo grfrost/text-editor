@@ -16,8 +16,9 @@ public class MacOsTerminal implements Terminal {
     @Override
     public void enableRawMode() {
         MacOsTerminal.LibC.Termios termios = new MacOsTerminal.LibC.Termios();
+        System.out.println("tcgetattr{");
         int rc = MacOsTerminal.LibC.INSTANCE.tcgetattr(MacOsTerminal.LibC.SYSTEM_OUT_FD, termios);
-
+        System.out.println("}tcgetattr");
         if (rc != 0) {
             System.err.println("There was a problem calling tcgetattr");
             System.exit(rc);
@@ -37,15 +38,18 @@ public class MacOsTerminal implements Terminal {
 
     @Override
     public void disableRawMode() {
+        System.out.println("tcsetattr{");
         MacOsTerminal.LibC.INSTANCE.tcsetattr(MacOsTerminal.LibC.SYSTEM_OUT_FD, MacOsTerminal.LibC.TCSAFLUSH, originalAttributes);
+        System.out.println("}tcsetattr");
     }
 
     @Override
     public WindowSize getWindowSize() {
         final MacOsTerminal.LibC.Winsize winsize = new MacOsTerminal.LibC.Winsize();
 
-        final int rc = MacOsTerminal.LibC.INSTANCE.ioctl(MacOsTerminal.LibC.SYSTEM_OUT_FD, MacOsTerminal.LibC.INSTANCE.TIOCGWINSZ, winsize);
-
+        System.out.println("ioctl{"+winsize.ws_col);
+        final int rc = MacOsTerminal.LibC.INSTANCE.ioctl(MacOsTerminal.LibC.SYSTEM_OUT_FD,MacOsTerminal.LibC.TIOCGWINSZ, winsize);
+        System.out.println("}ioctl");
         if (rc != 0) {
             System.err.println("ioctl failed with return code[={}]" + rc);
             System.exit(1);

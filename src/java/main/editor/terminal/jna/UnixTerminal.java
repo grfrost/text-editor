@@ -44,7 +44,7 @@ public class UnixTerminal implements Terminal {
     public WindowSize getWindowSize() {
         final UnixTerminal.LibC.Winsize winsize = new UnixTerminal.LibC.Winsize();
 
-        final int rc = UnixTerminal.LibC.INSTANCE.ioctl(UnixTerminal.LibC.SYSTEM_OUT_FD, UnixTerminal.LibC.INSTANCE.TIOCGWINSZ, winsize);
+        final int rc = UnixTerminal.LibC.INSTANCE.ioctl(UnixTerminal.LibC.SYSTEM_OUT_FD, UnixTerminal.LibC.TIOCGWINSZ, winsize);
 
         if (rc != 0) {
             System.err.println("ioctl failed with return code[={}]" + rc);
