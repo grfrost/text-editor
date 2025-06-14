@@ -5,6 +5,7 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
@@ -21,6 +22,27 @@ public class MacOSTerminal {
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS),
             Linker.Option.firstVariadicArg(2)
     );
+
+    // https://www.man7.org/linux/man-pages/man3/isatty.3.html
+    static MethodHandle isatty = linker.downcallHandle(
+            lookup.find("isatty").get(), FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
+    // https://man7.org/linux/man-pages/man3/tcsetattr.3p.html
+    static MethodHandle tcsetattr = linker.downcallHandle(
+            lookup.find("tcsetattr").get(),
+                FunctionDescriptor.of(
+    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+    // https://man7.org/linux/man-pages/man3/tcgetattr.3p.html
+    static MethodHandle  tcgetattr = linker.downcallHandle(
+            lookup.find("tcgetattr").get(),
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+    // https://man7.org/linux/man-pages/man3/ttyname.3.html
+    static MethodHandle ttyname_r = linker.downcallHandle(
+            lookup.find("ttyname_r").get(),
+                FunctionDescriptor.of(
+    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+
+
+
 
     static VarHandle lookupVarHandle(MemoryLayout.PathElement... elements) {
         VarHandle vh = winsize.LAYOUT.varHandle(elements);
@@ -52,9 +74,6 @@ public class MacOSTerminal {
                 throw new UnsupportedOperationException();
             }
         }
-
-
-
         static final GroupLayout LAYOUT;
         private static final VarHandle ws_col;
         private static final VarHandle ws_row;
@@ -72,12 +91,12 @@ public class MacOSTerminal {
             ws_ypixels = lookupVarHandle(MemoryLayout.PathElement.groupElement("ws_ypixels"));
         }
 
-        private final java.lang.foreign.MemorySegment seg;
-
+        private final MemorySegment seg;
+        boolean ok;
         winsize() {
-            seg = java.lang.foreign.Arena.ofAuto().allocate(LAYOUT);
+            seg = Arena.ofAuto().allocate(LAYOUT);
+            ok =  get();
         }
-
 
         short ws_col() {
             return (short) ws_col.get(seg);
@@ -94,24 +113,21 @@ public class MacOSTerminal {
             return (short) ws_ypixels.get(seg);
         }
 
-        public void get() {
-            int res = 0;
+        public boolean get() {
+            int fd =1; //stdout
             try {
-                res = (int) ioctl.invoke(1, (long) winsize.TIOCGWINSZ, seg);
+                return (int) ioctl.invoke(fd, (long) winsize.TIOCGWINSZ, seg) == 0;
             } catch (Throwable e) {
-                throw new RuntimeException(e);
-            }
-            if (res == 0) {
-                System.out.println("row " + ws_row()+" col " + ws_col());
-                System.out.println("x_pixels " + ws_xpixels()+" y_pixels " + ws_ypixels());
-            }else{
-                System.out.println("ioctl failed ");
+               return false;
             }
         }
     }
         public static void main(String[] args) throws Throwable {
                 winsize ws = new winsize();
-                ws.get();
-
+                if (ws.ok){
+                    System.out.println("row " + ws.ws_row()+" col " + ws.ws_col()+ " x_pixels " + ws.ws_xpixels()+" y_pixels " + ws.ws_ypixels());
+                }else{
+                    System.out.println("ioctl failed ");
+                }
         }
     }
