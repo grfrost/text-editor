@@ -73,9 +73,9 @@ public class MacOrUnixTerminal implements Terminal<MacOrUnixTerminal> {
             this.raw =  new termios_s(fd, arena.allocate(termios_s.LAYOUT));
             this.raw.get();
             this.raw.show("raw     -> ");
-            this.raw.c_lflag(raw.c_lflag() & ~(termios_s.ECHO | termios_s.ICANON | termios_s.IEXTEN | termios_s.ISIG));
-            this.raw.c_iflag(raw.c_iflag() & ~(termios_s.IXON | termios_s.ICRNL));
-            this.raw.c_oflag(raw.c_oflag() & ~(termios_s.OPOST));
+            this.raw.c_lflag(raw.c_lflag() & ~(termios_s.ECHO.v() | termios_s.ICANON.v() | termios_s.IEXTEN.v() | termios_s.ISIG.v()));
+            this.raw.c_iflag(raw.c_iflag() & ~(termios_s.IXON.v() | termios_s.ICRNL.v()));
+            this.raw.c_oflag(raw.c_oflag() & ~(termios_s.OPOST.v()));
             this.raw.show("raw     -> ");
             UnixTerminal unixTerminal = new UnixTerminal();
             unixTerminal.enableRawMode();

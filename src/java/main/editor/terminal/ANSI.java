@@ -22,8 +22,16 @@ public interface ANSI<T extends ANSI<T>> {
     default T rowCol(int y, int x ){
         return escBrace(String.format("%d;%dH", y, x));
     }
+  //  https://community.unix.com/t/mouse-tracking-in-terminal/383854/4
+    // https://github.com/tinmarino/mouse_xterm/blob/master/mouse.sh
 
-
+//https://github.com/tinmarino/mouse_xterm/blob/master/mouse.sh
+    default T trackMouseStart(){
+        return escBrace("?1000;1006;1015h");
+    }
+    default T trackMouseEnd(){
+        return escBrace("?1000;1006;1015l");
+    }
 
     default T  clearScreen(){
         esc("[2J");

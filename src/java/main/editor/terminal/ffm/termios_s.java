@@ -11,33 +11,83 @@ record termios_s(int fd, MemorySegment seg) {
         vh = MethodHandles.insertCoordinates(vh, vh.coordinateTypes().size() - 1, 0L);
         return vh;
     }
-    public static final long ISIG = 1, ICANON = 2, ECHO = 10, TCSANOW = 0, TCSADRAIN = 1, TCSAFLUSH = 2,
-            IXON = 2000, ICRNL = 400, IEXTEN = 100000, OPOST = 1, VMIN = 6, VTIME = 5;
+    record bit(String name, long v){
+        static bit of(String name, long v){
+            return new bit(name, v);
+        }
+        boolean isSet(long b){
+            return ((b&v)==b);
+        }
+        String flag(long b){
+            return (isSet(b)?"+":"-")+name();
+        }
+    }
+    public static final bit  ISIG = bit.of("ISIG", 1);
+    public static final bit  ICANON = bit.of("ICANON",2);
+    public static final bit  ECHO=bit.of("ECHO", 10);
+    public static final bit  TCSANOW = bit.of("TCSANOW", 0);
+    public static final bit TCSADRAIN = bit.of("TCSADRAIN", 1);
+    public static final bit TCSAFLUSH = bit.of("TCSAFLUSH", 2);
+    public static final bit    IXON = bit.of("IXON", 2000);
+    public static final bit ICRNL = bit.of("ICRNL", 400);
+    public static final bit       IEXTEN = bit.of("IEXTEN", 100000);
+    public static final bit        OPOST = bit.of("OPOST", 1);
+    public static final bit       VMIN = bit.of("VMIN", 6);
+    public static final bit VTIME = bit.of("VTIME", 5);
+
+    String hex(long v){
+        String s = Long.toHexString(v);
+        return "0".repeat(17-s.length())+s;
+    }
+    String bin(long v){
+        String s = Long.toBinaryString(v);
+        return "0".repeat(65-s.length())+s;
+    }
+    String info(String name, long v, long bit){
+        return name+"=" +hex(v&bit)+" "+bin(v&bit);
+    }
+    String info(String name, long v){
+        return info(name, v, 0xffffffffL);
+    }
+
     void show(String str) {
         System.out.println(str + ": c_cflag=" + Long.toHexString(c_cflag()) + " c_iflag=" + Long.toHexString(c_iflag()) + " c_oflag=" + c_oflag() + " c_lflag=" + Long.toHexString(c_lflag()));
-        long clflag = c_cflag();
-        //
+        {
+            long cflag = c_cflag();
+            //
          /*
                  // termios.c_lflag &= ~(UnixTerminal.LibC.ECHO | UnixTerminal.LibC.ICANON | UnixTerminal.LibC.IEXTEN | UnixTerminal.LibC.ISIG);
             //termios.c_iflag &= ~(UnixTerminal.LibC.IXON | UnixTerminal.LibC.ICRNL);
             //termios.c_oflag &= ~(UnixTerminal.LibC.OPOST);
           */
-        System.out.print("c_cflag: ");
-        if ((clflag & ECHO) == ECHO) {
-            System.out.print("ECHO");
-        }
 
-        if ((clflag & ICANON) == ICANON) {
-            System.out.print("ICANON");
+            System.out.println(str + info(":  c_cflag=", cflag));
         }
-        if ((clflag & ISIG) == ISIG) {
-            System.out.print("ISIG");
-        }
+        {
+            long iflag = c_iflag();
+            System.out.print(str + info(":  c_iflag=", iflag));
+            System.out.println(" "+IXON.flag(iflag)+" "+ICRNL.flag(iflag));
+            System.out.println(str + info(":     IXON=", iflag, IXON.v));
+            System.out.println(str + info(":     ICRNL=", iflag, ICRNL.v));
 
-        if ((clflag & IEXTEN) == IEXTEN) {
-            System.out.print("IEXTEN");
         }
+        {
+            long oflag = c_cflag();
+            System.out.print(str + info(":  c_oflag=", oflag));
+            System.out.println(" "+OPOST.flag(oflag));
+            System.out.println(str + info(":     OPOST=", oflag, OPOST.v));
+        }
+        {
+            long lflag = c_cflag();
+            System.out.print(str + info(":  c_lflag=", lflag));
+            System.out.println(" "+ECHO.flag(lflag)+" "+ICANON.flag(lflag)+" "+ISIG.flag(lflag)+" "+IEXTEN.flag(lflag));
+            System.out.println();
+            System.out.println(str + info(":     ECHO=", lflag, ECHO.v));
+            System.out.println(str + info(":   ICANON=", lflag, ICANON.v));
+            System.out.println(str + info(":     ISIG=", lflag, ISIG.v));
+            System.out.println(str + info(":   IEXTEN=", lflag, IEXTEN.v));
 
+        }
         System.out.println();
     }
 

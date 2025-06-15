@@ -1,5 +1,8 @@
-java \
+if [  -f ~/github/babylon-grfrost-fork/build/linux-x86_64-server-release/jdk/bin/java ] ; then 
+   export JAVA=~/github/babylon-grfrost-fork/build/linux-x86_64-server-release/jdk/bin/java
+fi
+${JAVA} \
    -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 \
    --enable-native-access=ALL-UNNAMED \
-   -cp out/production/text-editor-tutorial \
+   -cp thirdparty/jna-5.17.0.jar:out/production/text-editor-tutorial \
     editor.Editor $1
