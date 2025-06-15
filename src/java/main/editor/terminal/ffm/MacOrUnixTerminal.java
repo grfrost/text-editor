@@ -4,6 +4,7 @@ import editor.Key;
 import editor.terminal.Terminal;
 import editor.terminal.WindowSize;
 
+import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.GroupLayout;
@@ -236,10 +237,6 @@ public class MacOrUnixTerminal implements Terminal {
             return ioctl(fd, seg) == 0 ? new winsize_s(fd, seg) : null;
         }
 
-        //void update() {
-          //  ioctl(fd, seg);
-       // }
-
         short ws_col() {
             return (short) ws_col.get(seg);
         }
@@ -270,7 +267,7 @@ public class MacOrUnixTerminal implements Terminal {
 
     @Override
     public WindowSize getWindowSize() {
-        return  new WindowSize(size.ws_col(), size.ws_row());
+        return  new WindowSize(size.ws_row(), size.ws_col());
     }
 
     final Arena arena;
@@ -299,5 +296,18 @@ public class MacOrUnixTerminal implements Terminal {
         }else{
             throw new IllegalStateException("not a tty");
         }
+    }
+    public int read() {
+        int i = -1;
+        try {
+            i = System.in.read();
+        }catch(IOException e) {
+i=-1;
+        }
+        return i;
+    }
+
+    public void write(String s) {
+        System.out.print(s);
     }
 }

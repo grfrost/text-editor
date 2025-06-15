@@ -7,6 +7,7 @@ import com.sun.jna.Structure;
 import editor.terminal.Terminal;
 import editor.terminal.WindowSize;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 public class UnixTerminal implements Terminal {
@@ -109,5 +110,17 @@ public class UnixTerminal implements Terminal {
         int ioctl(int fd, int opt, UnixTerminal.LibC.Winsize winsize) throws LastErrorException;
 
     }
+    public int read() {
+        int i = -1;
+        try {
+            i = System.in.read();
+        }catch(IOException e) {
+            i=-1;
+        }
+        return i;
+    }
 
+    public void write(String s) {
+        System.out.print(s);
+    }
 }

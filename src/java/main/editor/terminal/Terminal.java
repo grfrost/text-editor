@@ -8,4 +8,7 @@ public interface Terminal {
     WindowSize getWindowSize();
 
     default boolean isatty(){return true;}
+
+    int read();
+    void write(String s);
 }

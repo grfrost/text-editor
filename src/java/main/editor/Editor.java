@@ -2,6 +2,7 @@ package editor;
 
 import editor.terminal.Terminal;
 import editor.terminal.ffm.MacOrUnixTerminal;
+import editor.terminal.jna.UnixTerminal;
 
 import java.io.IOException;
 import java.lang.foreign.Arena;
@@ -103,7 +104,7 @@ public class Editor {
         drawContent(builder);
         drawStatusBar(builder);
         drawCursor(builder);
-        System.out.print(builder);
+        terminal.write(builder.toString());
     }
 
     private  void drawCursorInTopLeft(StringBuilder builder) {
@@ -180,7 +181,7 @@ public class Editor {
         while (true) {
             setStatusMessage(message);
             refreshScreen();
-            Key key = Key.readAndMap();
+            Key key = Key.readAndMap(terminal);
             if (key == Key.DEL || key == Key.CtrlH || key == Key.BACKSPACE) {
                 if (userInputBuilder.length() > 0) {
                     userInputBuilder.deleteCharAt(userInputBuilder.length() - 1);
@@ -270,8 +271,8 @@ public class Editor {
     private  String statusMessage;
 
     private  void exit() {
-        System.out.print("\033[2J");
-        System.out.print("\033[H");
+        terminal.write("\033[2J");
+        terminal.write("\033[H");
         terminal.disableRawMode();
         System.exit(0);
     }
@@ -322,21 +323,21 @@ public class Editor {
         screen = new Screen(windowSize.rows() - 1, windowSize.cols());
         while (true) {
             refreshScreen();
-            handleKey(Key.readAndMap());
+            handleKey(Key.readAndMap(terminal));
         }
     }
 
     public static void main(String[] args) throws IOException {
         try (Arena arena = Arena.ofConfined()) {
             Path path = Path.of(args[0]);
-            Terminal terminal = new MacOrUnixTerminal(arena,0);
-            if (false && terminal.isatty()) {
-                System.out.println("is a tty");
+            Terminal terminal = new UnixTerminal();//new MacOrUnixTerminal(arena,0);
+            if (terminal.isatty()) {
+                terminal.write("is a tty\n");
                 Content content = Content.of(path);
                 Editor editor = new Editor(terminal);
                 editor.edit(content);
             } else {
-                System.out.println("Not a tty");
+                terminal.write("Not a tty\n");
             }
         }catch (Exception e) {
             e.printStackTrace();

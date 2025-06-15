@@ -1,4 +1,4 @@
 java \
    --enable-native-access=ALL-UNNAMED \
-   -cp out/production/text-editor-tutorial \
+   -cp thirdparty/jna-5.17.0.jar:out/production/text-editor-tutorial \
     editor.Editor $1
