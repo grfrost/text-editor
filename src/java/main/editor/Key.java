@@ -87,7 +87,19 @@ public record Key(int v) {
                 };
             }
         }
+
+    public boolean deletesCharBefore() {
+         return this == Key.DEL || this == Key.CtrlH || this == Key.BACKSPACE;
     }
+
+    public boolean clearsStatus() {
+        return this  == Key.ESC || this == Key.NL;
+    }
+
+    public boolean canBeInserted() {
+        return !Character.isISOControl(v()) && v() < 128;
+    }
+}
 
 
 

@@ -10,12 +10,12 @@ import editor.terminal.WindowSize;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class UnixTerminal implements Terminal {
+public class UnixTerminal implements Terminal<UnixTerminal> {
 
     private static UnixTerminal.LibC.Termios originalAttributes;
 
     @Override
-    public void enableRawMode() {
+    public UnixTerminal enableRawMode() {
         UnixTerminal.LibC.Termios termios = new UnixTerminal.LibC.Termios();
         int rc = UnixTerminal.LibC.INSTANCE.tcgetattr(UnixTerminal.LibC.SYSTEM_OUT_FD, termios);
 
@@ -25,20 +25,17 @@ public class UnixTerminal implements Terminal {
         }
 
         originalAttributes = UnixTerminal.LibC.Termios.of(termios);
-
         termios.c_lflag &= ~(UnixTerminal.LibC.ECHO | UnixTerminal.LibC.ICANON | UnixTerminal.LibC.IEXTEN | UnixTerminal.LibC.ISIG);
         termios.c_iflag &= ~(UnixTerminal.LibC.IXON | UnixTerminal.LibC.ICRNL);
         termios.c_oflag &= ~(UnixTerminal.LibC.OPOST);
-
-       /* termios.c_cc[LibC.VMIN] = 0;
-        termios.c_cc[LibC.VTIME] = 1;*/
-
         UnixTerminal.LibC.INSTANCE.tcsetattr(UnixTerminal.LibC.SYSTEM_OUT_FD, UnixTerminal.LibC.TCSAFLUSH, termios);
+        return self();
     }
 
     @Override
-    public void disableRawMode() {
+    public UnixTerminal disableRawMode() {
         UnixTerminal.LibC.INSTANCE.tcsetattr(UnixTerminal.LibC.SYSTEM_OUT_FD, UnixTerminal.LibC.TCSAFLUSH, originalAttributes);
+        return self();
     }
 
     @Override
@@ -74,7 +71,7 @@ public class UnixTerminal implements Terminal {
         class Termios extends Structure {
             public int c_iflag, c_oflag, c_cflag, c_lflag;
 
-            public byte[] c_cc = new byte[19];
+            public byte[] c_cc = new byte[32]; // 32
 
             public Termios() {
             }
@@ -111,16 +108,15 @@ public class UnixTerminal implements Terminal {
 
     }
     public int read() {
-        int i = -1;
         try {
-            i = System.in.read();
-        }catch(IOException e) {
-            i=-1;
+            return System.in.read();
+        } catch (IOException e) {
         }
-        return i;
+        return -1;
     }
 
-    public void write(String s) {
+    public UnixTerminal write(String s) {
         System.out.print(s);
+        return self();
     }
 }

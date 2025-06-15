@@ -2,7 +2,6 @@ package editor;
 
 import editor.terminal.Terminal;
 import editor.terminal.ffm.MacOrUnixTerminal;
-import editor.terminal.jna.UnixTerminal;
 
 import java.io.IOException;
 import java.lang.foreign.Arena;
@@ -15,8 +14,6 @@ public class Editor {
 
     record Screen(int rows, int cols) {
     }
-
-
 
     private  void insertChar(Key k) {
         if (cursor.x() == content.size()) {
@@ -48,8 +45,7 @@ public class Editor {
     }
 
 
-    private  void appendStringToRow(int at
-            , String append) {
+    private  void appendStringToRow(int at, String append) {
         content.content().set(at, content.content().get(at) + append);
     }
 
@@ -77,12 +73,15 @@ public class Editor {
     }
 
     private  void deleteCharFromRow(int row, int at) {
-        if (at < 0 || at > content.content().get(row).length()) return;
-        String editedLine = new StringBuilder(content.content().get(row)).deleteCharAt(at).toString();
-        content.content().set(row, editedLine);
+        if (!(at < 0 || at > content.content().get(row).length())){
+            content.content().set(row, new StringBuilder(content.content().get(row)).deleteCharAt(at).toString());
+       }
     }
 
-    private  void scroll() {
+
+
+    private  void refreshScreen() {
+        // Scroll cursor to correct position given offset x and y
         if (cursor.y() >= screen.rows() + offset.y()) {
             offset = offset.x(cursor.y() - screen.rows() + 1);
         } else if (cursor.y() < offset.y()) {
@@ -94,25 +93,41 @@ public class Editor {
         } else if (cursor.x() < offset.x()) {
             offset = offset.x(cursor.x());
         }
-    }
 
 
-    private  void refreshScreen() {
-        scroll();
-        StringBuilder builder = new StringBuilder();
-        drawCursorInTopLeft(builder);
-        drawContent(builder);
-        drawStatusBar(builder);
-        drawCursor(builder);
-        terminal.write(builder.toString());
-    }
+        terminal.cursorHome();
 
-    private  void drawCursorInTopLeft(StringBuilder builder) {
-        builder.append("\033[H");
-    }
+        // Draw content
+        for (int i = 0; i < screen.rows; i++) {
+            int fileI = offset.y() + i;
+            if (fileI >= content.size()) {
+                terminal.write("~");
+            } else {
+                String line = content.content().get(fileI);
+                int lengthToDraw = line.length() - offset.x();
 
-    private  void drawCursor(StringBuilder builder) {
-        builder.append(String.format("\033[%d;%dH", cursor.y() - offset.y() + 1, cursor.x() - offset.y() + 1));
+                if (lengthToDraw < 0) {
+                    lengthToDraw = 0;
+                }
+                if (lengthToDraw > screen.cols) {
+                    lengthToDraw = screen.cols();
+                }
+
+                if (lengthToDraw > 0) {
+                    terminal.write(line.substring(offset.x(), offset.x() + lengthToDraw ));
+
+                }
+            }
+            terminal.escBrace("K\r\n");
+        }
+
+        terminal.inv(t-> t.fill(
+                (statusMessage != null )
+                        ? statusMessage
+                        : ("Rows: " + screen.rows() + "X:" + cursor.x() + " Y: " + cursor.y())
+                , screen.cols)
+        );
+        terminal.rowCol( cursor.y() - offset.y() + 1, cursor.x() - offset.x() + 1);
     }
 
     public  void setStatusMessage(String message) {
@@ -182,20 +197,11 @@ public class Editor {
             setStatusMessage(message);
             refreshScreen();
             Key key = Key.readAndMap(terminal);
-            if (key == Key.DEL || key == Key.CtrlH || key == Key.BACKSPACE) {
-                if (userInputBuilder.length() > 0) {
-                    userInputBuilder.deleteCharAt(userInputBuilder.length() - 1);
-                    message = userInputBuilder.toString();
-                }
-            } else if (key == Key.ESC) {  // escap
+            if (key.deletesCharBefore() && userInputBuilder.length() > 0) {
+                userInputBuilder.deleteCharAt(userInputBuilder.length() - 1);
+            } else if (key.clearsStatus()) {  // escap
                 clearStatusMessage();
-                callback.accept(userInputBuilder.toString(), key);
-                return;
-            } else if (key == Key.NL) { // user pressed enter
-                clearStatusMessage();
-                callback.accept(userInputBuilder.toString(), key);
-                return;
-            } else if (!Character.isISOControl(key.v()) && key.v() < 128) {
+            } else if (key.canBeInserted()) {
                 userInputBuilder.append((char) key.v());
                 message = userInputBuilder.toString();
             }
@@ -206,40 +212,6 @@ public class Editor {
 
      Screen screen;
 
-    private  void drawStatusBar(StringBuilder builder) {
-        String toDraw = statusMessage != null ? statusMessage : ("Rows: " + screen.rows() + "X:" + cursor.x() + " Y: " + cursor.y());
-
-        builder.append("\033[7m")
-                .append(toDraw)
-                .append(" ".repeat(Math.max(0, screen.cols() - toDraw.length())))
-                .append("\033[0m");
-    }
-
-    private  void drawContent(StringBuilder builder) {
-        for (int i = 0; i < screen.rows; i++) {
-            int fileI = offset.y() + i;
-            if (fileI >= content.size()) {
-                builder.append("~");
-            } else {
-                String line = content.content().get(fileI);
-                int lengthToDraw = line.length() - offset.x();
-
-                if (lengthToDraw < 0) {
-                    lengthToDraw = 0;
-                }
-                if (lengthToDraw > screen.cols) {
-                    lengthToDraw = screen.cols();
-                }
-
-                if (lengthToDraw > 0) {
-                    builder.append(line, offset.x(), offset.x() + lengthToDraw);
-                }
-
-
-            }
-            builder.append("\033[K\r\n");
-        }
-    }
 
 
     private  void handleKey(Key key) {
@@ -263,7 +235,7 @@ public class Editor {
             insertChar(key);
         }
     }
-    Terminal terminal;
+    Terminal<?> terminal;
     private  Cursor cursor = new Cursor(0, 0);
 
     private  Offset offset = new Offset(0, 0);
@@ -271,9 +243,7 @@ public class Editor {
     private  String statusMessage;
 
     private  void exit() {
-        terminal.write("\033[2J");
-        terminal.write("\033[H");
-        terminal.disableRawMode();
+        terminal.clearScreen().cursorHome().disableRawMode();
         System.exit(0);
     }
 
@@ -330,7 +300,7 @@ public class Editor {
     public static void main(String[] args) throws IOException {
         try (Arena arena = Arena.ofConfined()) {
             Path path = Path.of(args[0]);
-            Terminal terminal = new UnixTerminal();//new MacOrUnixTerminal(arena,0);
+            var terminal = new MacOrUnixTerminal(arena,0);
             if (terminal.isatty()) {
                 terminal.write("is a tty\n");
                 Content content = Content.of(path);

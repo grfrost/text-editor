@@ -1,14 +1,22 @@
 package editor.terminal;
 
-public interface Terminal {
-    void enableRawMode();
 
-    void disableRawMode();
+public interface Terminal<T extends Terminal<T>> extends ANSI<T> {
+
+
+    T enableRawMode();
+
+    T disableRawMode();
 
     WindowSize getWindowSize();
 
     default boolean isatty(){return true;}
 
     int read();
-    void write(String s);
+
+    @Override
+    T write(String s);
+
+
+
 }
