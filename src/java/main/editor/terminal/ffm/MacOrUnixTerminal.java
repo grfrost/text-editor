@@ -170,8 +170,19 @@ public class MacOrUnixTerminal implements Terminal {
             return vh;
         }
 
-        private static final int TIOCGWINSZ;
+        interface MacLibC {
+            int SYSTEM_OUT_FD = 0;
+            int ISIG = 1, ICANON = 2, ECHO = 10, TCSANOW = 0, TCSADRAIN = 1, TCSAFLUSH = 2,
+                    IXON = 2000, ICRNL = 400, IEXTEN = 100000, OPOST = 1, VMIN = 6, VTIME = 5, TIOCGWINSZ = 0x40087468;
 
+        }
+        public static int TIOCGWINSZ;
+
+        interface LinuxLib{
+            int SYSTEM_OUT_FD = 0;
+            int ISIG = 1, ICANON = 2, ECHO = 10, TCSAFLUSH = 2,
+                    IXON = 2000, ICRNL = 400, IEXTEN = 100000, OPOST = 1, VMIN = 6, VTIME = 5, TIOCGWINSZ = 0x5413;
+        }
         static {
             String osName = System.getProperty("os.name");
             if (osName.startsWith("Linux")) {
@@ -225,9 +236,9 @@ public class MacOrUnixTerminal implements Terminal {
             return ioctl(fd, seg) == 0 ? new winsize_s(fd, seg) : null;
         }
 
-        void update() {
-            ioctl(fd, seg);
-        }
+        //void update() {
+          //  ioctl(fd, seg);
+       // }
 
         short ws_col() {
             return (short) ws_col.get(seg);
@@ -282,48 +293,11 @@ public class MacOrUnixTerminal implements Terminal {
             this.raw.c_lflag(raw.c_lflag() & ~(termios.ECHO | termios.ICANON | termios.IEXTEN | termios.ISIG));
             this.raw.c_iflag(raw.c_iflag() & ~(termios.IXON | termios.ICRNL));
             this.raw.c_oflag(raw.c_oflag() & ~(termios.OPOST));
-            this.raw.show("raw");
+            this.raw.show("raw   -> ");
             this.size = winsize_s.of(arena,fd);
-            System.out.println("row " + size.ws_row() + " col " + size.ws_col() + " x_pixels " + size.ws_xpixels() + " y_pixels " + size.ws_ypixels());
+           // System.out.println("row " + size.ws_row() + " col " + size.ws_col() + " x_pixels " + size.ws_xpixels() + " y_pixels " + size.ws_ypixels());
         }else{
             throw new IllegalStateException("not a tty");
-        }
-    }
-
-    public static void main(String[] args) throws Throwable {
-        try (Arena arena = Arena.ofConfined()) {
-            Terminal t = new MacOrUnixTerminal(arena, 0);
-            if (t.isatty()) {
-                if (winsize_s.of(arena,0) instanceof winsize_s ws) {
-                    System.out.println("row " + ws.ws_row() + " col " + ws.ws_col() + " x_pixels " + ws.ws_xpixels() + " y_pixels " + ws.ws_ypixels());
-                    var prev = termios.of(arena,0);
-                    prev.show("prev before get");
-                    prev.get();
-                    prev.show("prev after get ");
-
-                    var quiet = termios.of(arena, 0);
-                    quiet.show("quiet before get ");
-                    quiet.get();
-                    quiet.show("quiet after get ");
-                    quiet.c_lflag(quiet.c_lflag() & ~(termios.ECHO | termios.ICANON | termios.IEXTEN | termios.ISIG));
-
-                    quiet.c_iflag(quiet.c_iflag() & ~(termios.IXON | termios.ICRNL));
-                    quiet.c_oflag(quiet.c_oflag() & ~(termios.OPOST));
-                    quiet.flush();
-                    quiet.show("quiet after set ");
-                    long start = System.currentTimeMillis();
-                    while ((System.currentTimeMillis() - start) < 10000) {
-                        Key key = Key.read();
-                        System.out.print("." + key.name());
-                    }
-
-                    prev.flush();
-                } else {
-                    System.out.println("ioctl failed ");
-                }
-            } else {
-                System.out.println("not a tty ");
-            }
         }
     }
 }

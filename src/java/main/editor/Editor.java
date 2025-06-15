@@ -327,10 +327,10 @@ public class Editor {
     }
 
     public static void main(String[] args) throws IOException {
-        try (Arena arena = Arena.ofAuto()) {
+        try (Arena arena = Arena.ofConfined()) {
             Path path = Path.of(args[0]);
             Terminal terminal = new MacOrUnixTerminal(arena,0);
-            if (terminal.isatty()) {
+            if (false && terminal.isatty()) {
                 System.out.println("is a tty");
                 Content content = Content.of(path);
                 Editor editor = new Editor(terminal);
