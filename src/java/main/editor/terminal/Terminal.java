@@ -6,4 +6,6 @@ public interface Terminal {
     void disableRawMode();
 
     WindowSize getWindowSize();
+
+    default boolean isatty(){return true;}
 }

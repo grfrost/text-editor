@@ -1,7 +1,8 @@
 package editor.terminal.ffm;
 
 import editor.Key;
-import editor.terminal.jna.MacOsTerminal;
+import editor.terminal.Terminal;
+import editor.terminal.WindowSize;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
@@ -14,9 +15,10 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+
 //https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#The%20Alternate%20Screen%20Buffer
 //https://github.com/alexarchambault/native-terminal/blob/main/native/jdk22/src/io/github/alexarchambault/nativeterm/internal/CLibrary.java
-public class MacOrUnixTerminal {
+public class MacOrUnixTerminal implements Terminal {
 
     static Linker linker = Linker.nativeLinker();
     static SymbolLookup loader = SymbolLookup.loaderLookup();
@@ -27,9 +29,9 @@ public class MacOrUnixTerminal {
     static MethodHandle isatty = linker.downcallHandle(
             lookup.find("isatty").get(), FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
 
-    static boolean isatty() {
+    public boolean isatty() {
         try {
-            return ((int) isatty.invoke(1) == 1);
+            return ((int) isatty.invoke(fd) == 1);
         } catch (Throwable e) {
             return false;
         }
@@ -45,66 +47,86 @@ public class MacOrUnixTerminal {
 
 
 
-    record termios(int fd, MemorySegment seg){
+    record termios(int fd, MemorySegment seg) {
         static VarHandle lookupVarHandle(MemoryLayout.PathElement... elements) {
             VarHandle vh = LAYOUT.varHandle(elements);
             vh = MethodHandles.insertCoordinates(vh, vh.coordinateTypes().size() - 1, 0L);
             return vh;
         }
-        void show(String str){
-            System.out.println(str+ ": c_cflag="+c_cflag()+" c_iflag="+c_iflag()+" c_oflag="+c_oflag()+" c_lflag="+c_lflag());
+
+        void show(String str) {
+            System.out.println(str + ": c_cflag=" + c_cflag() + " c_iflag=" + c_iflag() + " c_oflag=" + c_oflag() + " c_lflag=" + c_lflag());
 
         }
-        public static final int ISIG = 1, ICANON = 2, ECHO = 10,TCSANOW =0, TCSADRAIN=1, TCSAFLUSH = 2,
+
+        public static final int ISIG = 1, ICANON = 2, ECHO = 10, TCSANOW = 0, TCSADRAIN = 1, TCSAFLUSH = 2,
                 IXON = 2000, ICRNL = 400, IEXTEN = 100000, OPOST = 1, VMIN = 6, VTIME = 5;
 
+        private static final int NCCS;
+
+        static {
+            String osName = System.getProperty("os.name");
+            if (osName.startsWith("Linux")) {
+                NCCS = 32;
+            } else if (osName.startsWith("Mac") || osName.startsWith("Darwin")) {
+                NCCS = 20;
+            }else{
+                throw new UnsupportedOperationException();
+            }
+            System.out.println("NCSS="+NCCS);
+        }
 
 
-          //  public byte[] c_cc = new byte[19];
-
-
-            static final GroupLayout LAYOUT = MemoryLayout.structLayout(
+        static final GroupLayout LAYOUT = MemoryLayout.structLayout(
                 ValueLayout.JAVA_LONG.withName("c_iflag"),
                 ValueLayout.JAVA_LONG.withName("c_oflag"),
                 ValueLayout.JAVA_LONG.withName("c_cflag"),
                 ValueLayout.JAVA_LONG.withName("c_lflag"),
-                MemoryLayout.sequenceLayout(20, ValueLayout.JAVA_BYTE).withName("c_cc"));
-             private static final VarHandle c_iflag = lookupVarHandle(MemoryLayout.PathElement.groupElement("c_iflag"));
+                MemoryLayout.sequenceLayout(NCCS, ValueLayout.JAVA_BYTE).withName("c_cc"));
+        private static final VarHandle c_iflag = lookupVarHandle(MemoryLayout.PathElement.groupElement("c_iflag"));
         private static final VarHandle c_oflag = lookupVarHandle(MemoryLayout.PathElement.groupElement("c_oflag"));
         private static final VarHandle c_cflag = lookupVarHandle(MemoryLayout.PathElement.groupElement("c_cflag"));
         private static final VarHandle c_lflag = lookupVarHandle(MemoryLayout.PathElement.groupElement("c_lflag"));
-     //   private static final VarHandle c_cc = lookupVarHandle(MemoryLayout.PathElement.groupElement("c_cc"));
+        //   private static final VarHandle c_cc = lookupVarHandle(MemoryLayout.PathElement.groupElement("c_cc"));
 
         long c_iflag() {
             return (long) c_iflag.get(seg);
         }
+
         long c_oflag() {
             return (long) c_oflag.get(seg);
         }
+
         long c_cflag() {
             return (long) c_cflag.get(seg);
         }
+
         long c_lflag() {
             return (long) c_lflag.get(seg);
         }
+
         void c_iflag(long v) {
-            c_iflag.set(seg,v);
+            c_iflag.set(seg, v);
         }
+
         void c_oflag(long v) {
-            c_oflag.set(seg,v);
+            c_oflag.set(seg, v);
         }
+
         void c_cflag(long v) {
-            c_cflag.set(seg,v);
+            c_cflag.set(seg, v);
         }
+
         void c_lflag(long v) {
-            c_lflag.set(seg,v);
+            c_lflag.set(seg, v);
         }
 
 
-        static termios of(int fd){
-            MemorySegment seg=Arena.ofAuto().allocate(LAYOUT);
+        static termios of(Arena arena, int fd) {
+            MemorySegment seg = arena.allocate(LAYOUT);
             return new termios(fd, seg);
         }
+
         // https://man7.org/linux/man-pages/man3/tcsetattr.3p.html
         static MethodHandle tcsetattr = linker.downcallHandle(
                 lookup.find("tcsetattr").get(),
@@ -114,24 +136,26 @@ public class MacOrUnixTerminal {
         static MethodHandle tcgetattr = linker.downcallHandle(
                 lookup.find("tcgetattr").get(),
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        int get(){
+
+        int get() {
             try {
-                return  (int) tcgetattr.invoke(fd,  seg);
+                return (int) tcgetattr.invoke(fd, seg);
             } catch (Throwable e) {
                 return 0;
             }
         }
 
-        private int set(long tcsa ){
+        private int set(long tcsa) {
             try {
-                return  (int) tcsetattr.invoke(fd, tcsa,  seg);
+                return (int) tcsetattr.invoke(fd, tcsa, seg);
             } catch (Throwable e) {
                 return 0;
             }
         }
-        private int flush(){
+
+        private int flush() {
             try {
-                return  (int) tcsetattr.invoke(fd, TCSAFLUSH,  seg);
+                return (int) tcsetattr.invoke(fd, TCSAFLUSH, seg);
             } catch (Throwable e) {
                 return 0;
             }
@@ -139,15 +163,15 @@ public class MacOrUnixTerminal {
 
     }
 
-
-   record winsize(int fd, MemorySegment seg){
-       static VarHandle lookupVarHandle(MemoryLayout.PathElement... elements) {
-           VarHandle vh = LAYOUT.varHandle(elements);
-           vh = MethodHandles.insertCoordinates(vh, vh.coordinateTypes().size() - 1, 0L);
-           return vh;
-       }
+    record winsize_s(int fd, MemorySegment seg) {
+        static VarHandle lookupVarHandle(MemoryLayout.PathElement... elements) {
+            VarHandle vh = LAYOUT.varHandle(elements);
+            vh = MethodHandles.insertCoordinates(vh, vh.coordinateTypes().size() - 1, 0L);
+            return vh;
+        }
 
         private static final int TIOCGWINSZ;
+
         static {
             String osName = System.getProperty("os.name");
             if (osName.startsWith("Linux")) {
@@ -169,38 +193,40 @@ public class MacOrUnixTerminal {
             } else {
                 throw new UnsupportedOperationException();
             }
+            System.out.println("TIOCGWINSZ="+Integer.toHexString(TIOCGWINSZ));
         }
 
+
         private static final GroupLayout LAYOUT = MemoryLayout.structLayout(
-                    ValueLayout.JAVA_SHORT.withName("ws_row"),
-                    ValueLayout.JAVA_SHORT.withName("ws_col"),
-                    ValueLayout.JAVA_SHORT.withName("ws_xpixels"),
-                    ValueLayout.JAVA_SHORT.withName("ws_ypixels"));
+                ValueLayout.JAVA_SHORT.withName("ws_row"),
+                ValueLayout.JAVA_SHORT.withName("ws_col"),
+                ValueLayout.JAVA_SHORT.withName("ws_xpixels"),
+                ValueLayout.JAVA_SHORT.withName("ws_ypixels"));
         private static final VarHandle ws_row = lookupVarHandle(MemoryLayout.PathElement.groupElement("ws_row"));
         private static final VarHandle ws_col = lookupVarHandle(MemoryLayout.PathElement.groupElement("ws_col"));
         private static final VarHandle ws_xpixels = lookupVarHandle(MemoryLayout.PathElement.groupElement("ws_xpixels"));
         private static final VarHandle ws_ypixels = lookupVarHandle(MemoryLayout.PathElement.groupElement("ws_ypixels"));
-      private  static final MethodHandle ioctl = linker.downcallHandle(
-               lookup.find("ioctl").get(),
-               FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS),
-               Linker.Option.firstVariadicArg(2)
-       );
+        private static final MethodHandle ioctl = linker.downcallHandle(
+                lookup.find("ioctl").get(),
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS),
+                Linker.Option.firstVariadicArg(2)
+        );
 
         private static int ioctl(int fd, MemorySegment seg) {
             try {
-                return  (int) ioctl.invoke(fd, (long) winsize.TIOCGWINSZ, seg);
+                return (int) ioctl.invoke(fd, (long) winsize_s.TIOCGWINSZ, seg);
             } catch (Throwable e) {
                 return 0;
             }
         }
 
-        static winsize of(int fd) {
-            MemorySegment seg = Arena.ofAuto().allocate(LAYOUT);
-            return ioctl(fd, seg) == 0?new winsize(fd,seg):null;
+        static winsize_s of(Arena arena, int fd) {
+            MemorySegment seg = arena.allocate(LAYOUT);
+            return ioctl(fd, seg) == 0 ? new winsize_s(fd, seg) : null;
         }
 
-        void update(){
-            ioctl(fd,seg);
+        void update() {
+            ioctl(fd, seg);
         }
 
         short ws_col() {
@@ -220,37 +246,84 @@ public class MacOrUnixTerminal {
         }
     }
 
-    public static void main(String[] args) throws Throwable {
+
+    @Override
+    public void enableRawMode() {
+        raw.flush();
+    }
+
+    @Override
+    public void disableRawMode() {
+        cooked.flush();
+    }
+
+    @Override
+    public WindowSize getWindowSize() {
+        return  new WindowSize(size.ws_col(), size.ws_row());
+    }
+
+    final Arena arena;
+
+    final int fd;
+
+    final private termios cooked;
+    final private termios raw;
+    final private winsize_s size;
+
+    public MacOrUnixTerminal(Arena arena, int fd) {
+        this.arena = arena;
+        this.fd = fd;
         if (isatty()) {
-            if (winsize.of(0) instanceof winsize ws){
-                System.out.println("row " + ws.ws_row() + " col " + ws.ws_col() + " x_pixels " + ws.ws_xpixels() + " y_pixels " + ws.ws_ypixels());
-                var prev = termios.of(0);
-                prev.show("prev before get");
-                prev.get();
-                prev.show("prev after get ");
+            this.cooked = termios.of(arena, fd);
+            this.cooked.get();
+            this.cooked.show("cooked  -> ");
+            this.raw = termios.of(arena, fd);
+            this.raw.get();
+            this.raw.c_lflag(raw.c_lflag() & ~(termios.ECHO | termios.ICANON | termios.IEXTEN | termios.ISIG));
+            this.raw.c_iflag(raw.c_iflag() & ~(termios.IXON | termios.ICRNL));
+            this.raw.c_oflag(raw.c_oflag() & ~(termios.OPOST));
+            this.raw.show("raw");
+            this.size = winsize_s.of(arena,fd);
+            System.out.println("row " + size.ws_row() + " col " + size.ws_col() + " x_pixels " + size.ws_xpixels() + " y_pixels " + size.ws_ypixels());
+        }else{
+            throw new IllegalStateException("not a tty");
+        }
+    }
 
-                var quiet = termios.of(0);
-                quiet.show("quiet before get ");
-                quiet.get();
-                quiet.show("quiet after get ");
-                quiet.c_lflag(quiet.c_lflag()& ~(termios.ECHO | termios.ICANON | termios.IEXTEN | termios.ISIG));
+    public static void main(String[] args) throws Throwable {
+        try (Arena arena = Arena.ofConfined()) {
+            Terminal t = new MacOrUnixTerminal(arena, 0);
+            if (t.isatty()) {
+                if (winsize_s.of(arena,0) instanceof winsize_s ws) {
+                    System.out.println("row " + ws.ws_row() + " col " + ws.ws_col() + " x_pixels " + ws.ws_xpixels() + " y_pixels " + ws.ws_ypixels());
+                    var prev = termios.of(arena,0);
+                    prev.show("prev before get");
+                    prev.get();
+                    prev.show("prev after get ");
 
-                quiet.c_iflag(quiet.c_iflag() & ~(termios.IXON |termios.ICRNL));
-                quiet.c_oflag(quiet.c_oflag() & ~(termios.OPOST));
-                quiet.flush();
-                quiet.show("quiet after set ");
-                long start = System.currentTimeMillis();
-                while ((System.currentTimeMillis() - start) < 10000) {
-                   Key key  =  Key.read();
-                   System.out.print("."+key.name());
+                    var quiet = termios.of(arena, 0);
+                    quiet.show("quiet before get ");
+                    quiet.get();
+                    quiet.show("quiet after get ");
+                    quiet.c_lflag(quiet.c_lflag() & ~(termios.ECHO | termios.ICANON | termios.IEXTEN | termios.ISIG));
+
+                    quiet.c_iflag(quiet.c_iflag() & ~(termios.IXON | termios.ICRNL));
+                    quiet.c_oflag(quiet.c_oflag() & ~(termios.OPOST));
+                    quiet.flush();
+                    quiet.show("quiet after set ");
+                    long start = System.currentTimeMillis();
+                    while ((System.currentTimeMillis() - start) < 10000) {
+                        Key key = Key.read();
+                        System.out.print("." + key.name());
+                    }
+
+                    prev.flush();
+                } else {
+                    System.out.println("ioctl failed ");
                 }
-
-                prev.flush();
             } else {
-                System.out.println("ioctl failed ");
+                System.out.println("not a tty ");
             }
-        } else {
-            System.out.println("not a tty ");
         }
     }
 }

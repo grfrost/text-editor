@@ -4,10 +4,11 @@
     <exclude-output />
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/src/java/main" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/src/java/main/editor/terminal/jna" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="jna-5.12.1" level="project" />
-    <orderEntry type="library" name="jna-5.12.1" level="project" />
+    <orderEntry type="library" name="jna-5.17.0" level="project" />
   </component>
 </module>
