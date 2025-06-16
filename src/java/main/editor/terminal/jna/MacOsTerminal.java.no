@@ -1,11 +1,11 @@
-package editor.terminal.jna;
+package editor.ANISTerminal.jna;
 
 import com.sun.jna.LastErrorException;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Structure;
-import editor.terminal.Terminal;
-import editor.terminal.WindowSize;
+import editor.terminal.ANISTerminalinal;
+import editor.ANISTerminal.WindowSize;
 
 import java.util.Arrays;
 

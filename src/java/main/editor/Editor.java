@@ -1,7 +1,7 @@
 package editor;
 
-import editor.terminal.Terminal;
-import editor.terminal.ffm.MacOrUnixTerminal;
+import editor.terminal.ANISTerminal;
+import editor.terminal.jline.JlineTerminal;
 
 import java.io.IOException;
 import java.lang.foreign.Arena;
@@ -95,13 +95,13 @@ public class Editor {
         }
 
 
-        terminal.cursorHome();
+        ANISTerminal.cursorHome();
 
         // Draw content
         for (int i = 0; i < screen.rows; i++) {
             int fileI = offset.y() + i;
             if (fileI >= content.size()) {
-                terminal.write("~");
+                ANISTerminal.write("~");
             } else {
                 String line = content.content().get(fileI);
                 int lengthToDraw = line.length() - offset.x();
@@ -114,20 +114,20 @@ public class Editor {
                 }
 
                 if (lengthToDraw > 0) {
-                    terminal.write(line.substring(offset.x(), offset.x() + lengthToDraw ));
+                    ANISTerminal.write(line.substring(offset.x(), offset.x() + lengthToDraw ));
 
                 }
             }
-            terminal.escBrace("K\r\n");
+            ANISTerminal.escBrace("K\r\n");
         }
 
-        terminal.inv(t-> t.fill(
+        ANISTerminal.inv(t-> t.fill(
                 (statusMessage != null )
                         ? statusMessage
                         : ("Rows: " + screen.rows() + "X:" + cursor.x() + " Y: " + cursor.y())
                 , screen.cols)
         );
-        terminal.rowCol( cursor.y() - offset.y() + 1, cursor.x() - offset.x() + 1);
+        ANISTerminal.rowCol( cursor.y() - offset.y() + 1, cursor.x() - offset.x() + 1);
     }
 
     public  void setStatusMessage(String message) {
@@ -196,7 +196,7 @@ public class Editor {
         while (true) {
             setStatusMessage(message);
             refreshScreen();
-            Key key = Key.readAndMap(terminal);
+            Key key = Key.readAndMap(ANISTerminal);
             if (key.deletesCharBefore() && userInputBuilder.length() > 0) {
                 userInputBuilder.deleteCharAt(userInputBuilder.length() - 1);
             } else if (key.clearsStatus()) {  // escap
@@ -235,7 +235,7 @@ public class Editor {
             insertChar(key);
         }
     }
-    Terminal<?> terminal;
+    ANISTerminal<?> ANISTerminal;
     private  Cursor cursor = new Cursor(0, 0);
 
     private  Offset offset = new Offset(0, 0);
@@ -243,7 +243,7 @@ public class Editor {
     private  String statusMessage;
 
     private  void exit() {
-        terminal.clearScreen().cursorHome().disableRawMode();
+        ANISTerminal.clearScreen().cursorHome().disableRawMode();
         System.exit(0);
     }
 
@@ -282,25 +282,25 @@ public class Editor {
             cursor = cursor.x(newLine.length());
         }
     }
-    Editor(Terminal terminal) {
-        this.terminal = terminal;
+    Editor(ANISTerminal ANISTerminal) {
+        this.ANISTerminal = ANISTerminal;
 
     }
     void edit(Content content) {
         this.content = content;
-        terminal.enableRawMode();
-        var windowSize = terminal.getWindowSize();
+        ANISTerminal.enableRawMode();
+        var windowSize = ANISTerminal.getWindowSize();
         screen = new Screen(windowSize.rows() - 1, windowSize.cols());
         while (true) {
             refreshScreen();
-            handleKey(Key.readAndMap(terminal));
+            handleKey(Key.readAndMap(ANISTerminal));
         }
     }
 
     public static void main(String[] args) throws IOException {
-        try (Arena arena = Arena.ofConfined()) {
+       // try (Arena arena = Arena.ofConfined()) {
             Path path = Path.of(args[0]);
-            var terminal = new MacOrUnixTerminal(arena,0);
+            var terminal = new JlineTerminal();//new MacOrUnixTerminal(arena,0);
             if (terminal.isatty()) {
                 terminal.write("is a tty\n");
                 Content content = Content.of(path);
@@ -309,8 +309,8 @@ public class Editor {
             } else {
                 terminal.write("Not a tty\n");
             }
-        }catch (Exception e) {
-            e.printStackTrace();
-        }
+       // }catch (Exception e) {
+         //   e.printStackTrace();
+       // }
     }
 }

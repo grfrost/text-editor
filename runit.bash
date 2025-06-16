@@ -3,6 +3,9 @@ if [  -f ~/github/babylon-grfrost-fork/build/linux-x86_64-server-release/jdk/bin
 fi
    
 ${JAVA} \
+   --add-modules jdk.internal.le \
+   --add-exports jdk.internal.le/jdk.internal.org.jline.terminal=ALL-UNNAMED \
+   --add-exports jdk.internal.le/jdk.internal.org.jline.utils=ALL-UNNAMED \
    --enable-native-access=ALL-UNNAMED \
    -cp thirdparty/jna-5.17.0.jar:out/production/text-editor-tutorial \
     editor.Editor $1

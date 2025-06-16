@@ -1,7 +1,7 @@
 package editor.terminal;
 
 
-public interface Terminal<T extends Terminal<T>> extends ANSI<T> {
+public interface ANISTerminal<T extends ANISTerminal<T>> extends ANSI<T> {
 
 
     T enableRawMode();

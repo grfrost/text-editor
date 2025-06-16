@@ -4,13 +4,13 @@ import com.sun.jna.LastErrorException;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Structure;
-import editor.terminal.Terminal;
+import editor.terminal.ANISTerminal;
 import editor.terminal.WindowSize;
 
 import java.io.IOException;
 import java.util.Arrays;
 
-public class UnixTerminal implements Terminal<UnixTerminal> {
+public class UnixTerminal implements ANISTerminal<UnixTerminal> {
 
     private static UnixTerminal.LibC.Termios originalAttributes;
 

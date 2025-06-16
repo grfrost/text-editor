@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="text-editor-tutorial" options="--add-modules jdk.internal.le --add-exports jdk.internal.le/jdk.internal.org.jline.terminal=ALL-UNNAMED --add-exports jdk.internal.le/jdk.internal.org.jline.utils=ALL-UNNAMED" />
+    </option>
+  </component>
+</project>

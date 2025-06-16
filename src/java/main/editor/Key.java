@@ -1,6 +1,6 @@
 package editor;
 
-import editor.terminal.Terminal;
+import editor.terminal.ANISTerminal;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -33,7 +33,7 @@ public record Key(int v) {
     public static final Key OSBRACE = Key.of('[');
     public static final Key _O = Key.of('O');
 
-    static Key readAndMap(Terminal terminal){
+    static Key readAndMap(ANISTerminal terminal){
             var keyCh = terminal.read();
             var key = Key.of(keyCh);
             if (key !=  Key.ESC) {

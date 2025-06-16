@@ -1,16 +1,22 @@
 package editor.terminal.ffm;
 
-import editor.terminal.Terminal;
+import editor.terminal.ANISTerminal;
 import editor.terminal.WindowSize;
 import editor.terminal.jna.UnixTerminal;
+//import editor.terminal.jna.UnixTerminal;
 
 import java.io.IOException;
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 
+import static editor.terminal.ffm.termios_s.IFLAG.ICRNL;
+import static editor.terminal.ffm.termios_s.IFLAG.IXON;
+import static editor.terminal.ffm.termios_s.LFLAG.*;
+import static editor.terminal.ffm.termios_s.OFLAG.OPOST;
+
 //https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#The%20Alternate%20Screen%20Buffer
 //https://github.com/alexarchambault/native-terminal/blob/main/native/jdk22/src/io/github/alexarchambault/nativeterm/internal/CLibrary.java
-public class MacOrUnixTerminal implements Terminal<MacOrUnixTerminal> {
+public class MacOrUnixTerminal implements ANISTerminal<MacOrUnixTerminal> {
 
     static Linker linker = Linker.nativeLinker();
     static SymbolLookup loader = SymbolLookup.loaderLookup();
@@ -73,17 +79,18 @@ public class MacOrUnixTerminal implements Terminal<MacOrUnixTerminal> {
             this.raw =  new termios_s(fd, arena.allocate(termios_s.LAYOUT));
             this.raw.get();
             this.raw.show("raw     -> ");
-            this.raw.c_lflag(raw.c_lflag() & ~(termios_s.ECHO.v() | termios_s.ICANON.v() | termios_s.IEXTEN.v() | termios_s.ISIG.v()));
-            this.raw.c_iflag(raw.c_iflag() & ~(termios_s.IXON.v() | termios_s.ICRNL.v()));
-            this.raw.c_oflag(raw.c_oflag() & ~(termios_s.OPOST.v()));
+            this.raw.c_lflag(raw.c_lflag() & ~(ECHO.v() | ICANON.v() | IEXTEN.v() | ISIG.v()));
+            this.raw.c_iflag(raw.c_iflag() & ~(IXON.v() | ICRNL.v()));
+            this.raw.c_oflag(raw.c_oflag() & ~(OPOST.v()));
             this.raw.show("raw     -> ");
             UnixTerminal unixTerminal = new UnixTerminal();
             unixTerminal.enableRawMode();
             this.raw.get();
-         //   this.cooked.enable();
+           //this.cooked.enable();
+            unixTerminal.disableRawMode();
             this.raw.show("raw     -> ");
 
-          //  System.exit(1);
+            System.exit(1);
 
            // termios.c_lflag &= ~(UnixTerminal.LibC.ECHO | UnixTerminal.LibC.ICANON | UnixTerminal.LibC.IEXTEN | UnixTerminal.LibC.ISIG);
             //termios.c_iflag &= ~(UnixTerminal.LibC.IXON | UnixTerminal.LibC.ICRNL);

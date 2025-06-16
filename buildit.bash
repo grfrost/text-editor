@@ -3,6 +3,9 @@ if [  -f ~/github/babylon-grfrost-fork/build/linux-x86_64-server-release/jdk/bin
 fi
 
 ${JAVAC} \
+   --add-modules jdk.internal.le \
+   --add-exports jdk.internal.le/jdk.internal.org.jline.terminal=ALL-UNNAMED \
+   --add-exports jdk.internal.le/jdk.internal.org.jline.utils=ALL-UNNAMED \
    -d out/production/text-editor-tutorial \
    -g \
    --source-path src/java/main \
