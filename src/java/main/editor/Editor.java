@@ -20,7 +20,7 @@ public class Editor {
         viewport.track(cursor);
         terminal.cursorHome();
         // Draw content
-        for (int i = 0; i < viewport.height; i++) {
+        for (int i = 0; i < viewport.height-1; i++) {
             if (content.line(i + viewport.y()) instanceof Content.Line line) {
                 terminal.write(viewport.clip(line.text()));
             }else{
@@ -32,10 +32,10 @@ public class Editor {
         terminal.inv(_-> terminal.fill(
                         "Rows: " + screen.height() + "X:" + cursor.x() + " Y: " + cursor.y()
                         + " Lines:"+content.height()
-                        + " Viewport "+viewport.x()+","+viewport.y()+"-"+(viewport.x()+ viewport.width)+","+viewport.y()+ viewport.height
+                        + " Viewport "+viewport.x()+","+viewport.y()+"-"+(viewport.x()+ viewport.width)+","+(viewport.y()+ viewport.height)
                 , screen.width)
         );
-        terminal.rowCol( cursor.y() - viewport.y(), cursor.x() - viewport.x() + 1);
+        terminal.rowCol( cursor.y() - viewport.y()+1, cursor.x() - viewport.x() + 1);
     }
 
 
