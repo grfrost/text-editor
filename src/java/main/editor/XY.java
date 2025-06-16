@@ -1,12 +1,14 @@
 package editor;
 
 interface XY<T extends XY<T>> {
-    int x();
 
-    int y();
     default T self(){
         return (T) this;
     }
+    int x();
+
+    int y();
+
     T moveTo(int x, int y);
 
     default T right() {
