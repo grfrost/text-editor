@@ -1,5 +1,7 @@
 if [  -f ~/github/babylon-grfrost-fork/build/linux-x86_64-server-release/jdk/bin/javac ] ; then 
    export JAVAC=~/github/babylon-grfrost-fork/build/linux-x86_64-server-release/jdk/bin/javac
+elif [  -f ~/github/babylon-grfrost-fork/build/macosx-aarch64-server-release/jdk/bin/javac ] ; then 
+   export JAVAC=~/github/babylon-grfrost-fork/build/macosx-aarch64-server-release/jdk/bin/javac
 fi
 
 ${JAVAC} \

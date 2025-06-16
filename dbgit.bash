@@ -1,5 +1,7 @@
 if [  -f ~/github/babylon-grfrost-fork/build/linux-x86_64-server-release/jdk/bin/java ] ; then 
    export JAVA=~/github/babylon-grfrost-fork/build/linux-x86_64-server-release/jdk/bin/java
+elif [  -f ~/github/babylon-grfrost-fork/build/macosx-aarch64-server-release/jdk/bin/javac ] ; then 
+   export JAVA=~/github/babylon-grfrost-fork/build/macosx-aarch64-server-release/jdk/bin/java
 fi
 ${JAVA} \
    --add-modules jdk.internal.le \
