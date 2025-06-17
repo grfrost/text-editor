@@ -1,7 +1,5 @@
 package editor;
 
-import jdk.swing.interop.SwingInterOpUtils;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,55 +9,122 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public record Content(Path path, List<Line> c, boolean ok) {
+public class Content implements RowColBounds<Content> {
 
 
+    public static class Line implements ColBounds<Line> {
+        Content content;
+        private String text;
 
-    public record Line(String text) {
-        public int width() {
+        public Line(Content content, String text) {
+            this.content = content;
+            this.text = text;
+        }
+
+        public String text() {
+            return text;
+        }
+
+        @Override
+        public int maxCol() {
             return text.length();
         }
+
+        @Override
+        public int minCol() {
+            return 0;
+        }
+
+        public static Line of(Content content,String s) {
+            return new Line(content,s);
+        }
+
+        public void deleteChar(Col<?> col) {
+            if (containsCol(col)) {
+                 replace(new StringBuilder(text).deleteCharAt(col.col()).toString());
+            }
+        }
+
+        public void insertChar(Col<?> col, char c) {
+            replace(new StringBuilder(text).insert(col.col(), c).toString());
+        }
+
+        public void replace(String replacement) {
+            text=replacement;
+        }
+    }
+
+    final private List<Line> c;
+
+    public Content(Stream<String> lines) {
+        this.c = lines
+                .map(s->new Content.Line(this, s))
+                .collect((Collectors.toCollection(ArrayList::new)));
+    }
+
+    public Content(String text) {
+        this(Stream.of(text.split("\n")));
     }
 
     public static Content of(Path path) {
-        if (Files.exists(path)) {
-            try (Stream<String> stream = Files.lines(path)) {
-                return new Content(path, stream.map(Line::new).collect((Collectors.toCollection(ArrayList::new))), true);
-            } catch (IOException e) {
-                return new Content(path, List.of(), false);
+        try {
+            if (Files.exists(path)) {
+                return new Content(Files.lines(path));
+            } else {
+                return of(Files.createFile(path));
             }
-        } else {
-            try {
-                Files.createFile(path);
-                return new Content(path, List.of(), true);
-            } catch (IOException e) {
-                return new Content(null, List.of(), false);
-            }
+        } catch (IOException e) {
+            return null;
         }
     }
 
-
-    public int height() {
+    @Override
+    public int maxRow() {
         return c.size();
     }
 
-    public Line line(int line) {
-        return (line>=0 && line < height()) ? c.get(line) : null;
+    @Override
+    public int maxCol() {
+        throw new IllegalStateException("Does not make sense in this method");
+       // return c.stream().map(Line::maxCol).max(Integer::compareTo).get();
     }
 
-    public void deleteLine(int line) {
-        if (line >= 0 && line < c.size()) {
-            c.remove(line);
+    @Override
+    public int minRow() {
+        return 0;
+    }
+
+    @Override
+    public int minCol() {
+        return 0;
+    }
+
+    Line lineAt(int row) {
+        return containsRow(row) ? c.get(row) : null;
+    }
+    public Line line(Row<?> row) {
+        return containsRow(row) ? c.get(row.row()) : null;
+    }
+    public Line lineAbove(Row<?> row) {
+        return lineAt(row.row() - 1);
+    }
+
+    public Line lineBelow(Row<?> row) {
+        return lineAt(row.row() + 1);
+    }
+
+    public void deleteLine(Row<?> cursor) {
+        if (containsRow(cursor)) {
+            c.remove(cursor.row());
         }
     }
 
-    public boolean save() {
+    public boolean save(Path path) {
         try {
             StringBuilder sb = new StringBuilder();
             for (Line line : c) {
                 sb.append(line.text).append("\n");
             }
-
             Files.write(path, sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             return true;
         } catch (IOException e) {
@@ -67,51 +132,83 @@ public record Content(Path path, List<Line> c, boolean ok) {
         }
     }
 
-
-
-    int lineWidth(int y){
-        return (line(y) instanceof Line line)?line.width():0;
+    Line set(int row, Line line) {
+        this.c.set(row, line);
+        return line;
     }
 
-
-
-
-    void insertChar(int y, int x, int c) {
-        if (line(y) instanceof Line line && x>=0&& x<line.width() ) {
-            this.c.set(y, new Content.Line(new StringBuilder(line.text()).insert(x, (char) c).toString()));
+    void deleteChar(Cursor cursor) {
+        if (line(cursor) instanceof Line line) {
+            line.deleteChar(cursor);
         }
     }
 
-    void deleteChar(int y, int x) {
-        if (line(y) instanceof Line line ) {
-            this.c().set(y, new Content.Line(new StringBuilder(line.text()).deleteCharAt(x).toString()));
+    private Content.Line createLine(String s){
+        return new Content.Line(this, s);
+    }
+    private Content.Line createEmptyLine(){
+        return createLine("");
+    }
+
+    Line replace(Row<?> row, Line replacement) {
+        if (line(row) instanceof Line line) {
+            set(row.row(), replacement);
+        }
+        return replacement;
+    }
+    void appendAtLine(Row<?> row, Content.Line append) {
+        replace(row, createLine(line(row).text + append));
+    }
+
+    void insertRowAt(int row, Content.Line rowContent) {
+        if (containsRow(row)) {
+            set(row, rowContent);
         }
     }
 
-    void appendAtLine(int y, Content.Line append) {
-        this.c().set(y, new Content.Line(this.c().get(y).text() + append));
-    }
-
-      void insertRowAt(int y, Content.Line rowContent) {
-        if (y >= 0 || y < height()) {
-            this.c().add(y, rowContent);
+    void insertCharAndMoveCursorRight(Cursor cursor, Key k) {
+        if (cursor.col() == maxRow()) {
+            insertRowAt(maxRow(), createEmptyLine());
+        }
+        if (line(cursor) instanceof Line line && line.containsCol(cursor)) {
+            line.insertChar(cursor, (char)k.v());
+            cursor.right();
         }
     }
 
-      void insertChar(Cursor cursor, Key k) {
-        if (cursor.x() == height()) {
-            insertRowAt(height(), new Content.Line(""));
+    void insertNewLineAndMoveCursorToNextLine(Cursor cursor) {
+        if (line(cursor) instanceof Line line) {
+            if (cursor.onFirstCol(line)){
+                insertRowAt(cursor.row(), createEmptyLine());
+                // Add an empty line above
+            }else if (cursor.onLastCol(line)){
+                insertRowAt(cursor.row()+1, createEmptyLine());
+                // Add an empty line below
+            }else{
+                String text = line(cursor).text();
+                line.replace(text.substring(0, cursor.col()));
+                Line right = createLine(text.substring(cursor.col()));
+                insertRowAt(cursor.row()+1, right);
+            }
+            cursor.down(1).col(0);
         }
-        insertChar(cursor.y(),cursor.x(), k.v());
     }
-
-      void insertNewLine(Cursor cursor) {
-        if (cursor.x() == 0) {
-            insertRowAt(cursor.y(), new  Content.Line(""));
-        } else {
-            insertRowAt(cursor.y() + 1, new Content.Line(this.c().get(cursor.y()).text().substring(cursor.x())));
-            this.c().set(cursor.y(), new Content.Line(this.c().get(cursor.y()).text().substring(0, cursor.x())));
+    public void deleteCharBeforeCursorAndAdjustCursor(Cursor cursor) {
+        if (line(cursor) instanceof Content.Line line ) {
+            if (cursor.onFirstCol(line)) {
+                if (!cursor.onFirstRow(this)){
+                    var lineAbove = lineAbove(cursor);
+                    var text = lineAbove.text();
+                    text = text.substring(0, text.length() - 1);
+                    text = text + line.text();
+                    lineAbove.replace(text);
+                    deleteLine(cursor);
+                    cursor.up(1).col(text.length());
+                }
+            }else {
+                cursor.left();
+                line.deleteChar(cursor);
+            }
         }
-
     }
 }

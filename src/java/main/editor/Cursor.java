@@ -1,59 +1,60 @@
 package editor;
 
-class Cursor  {
-
-
-    private int x;
-    private int y;
-    Cursor( int x, int y){
-
-        this.x = x;
-        this.y = y;
+public class Cursor implements RowCol<Cursor> {
+    private int col;
+    private int row;
+    private Cursor( int row, int col){
+        this.row = row;
+        this.col = col;
+    }
+    public static Cursor of( ){
+        return new Cursor(0,0);
+    }
+    public static Cursor of(int row, int col ){
+        return new Cursor(row,0);
     }
 
-    public void xy(int x, int y) {
-       this.x = x;
-       this.y = y;
+    @Override public int row() {
+        return row;
     }
 
-
-    public int y() {
-        return y;
+    @Override public int col() {
+        return col;
     }
 
-    public int x() {
-        return x;
-    }
-    public void x(int x) {
-       this.x = x;
+    public Cursor col(int c) {
+       this.col = c;
+       return this;
     }
 
-    public void y(int y) {
-        this.y = y;
+    public Cursor row(int r) {
+        this.row = r;
+        return this;
     }
 
-    public void right() {
-        x++;
+    public Cursor right() {
+        col++;
+        return this;
     }
 
-    public void left() {
-        if (x>0){
-           x--;
-        }
+    public Cursor left() {
+        col--;
+        return this;
     }
 
-    public void up(int n) {
-        if ((y-n)>0) {
-             y-=n;
-        }
+    public Cursor up(int rows) {
+        row -=rows;
+        return this;
     }
 
-    public void down(int n) {
-        y+=n;
+    public Cursor down(int rows) {
+        row +=rows;
+        return this;
     }
 
-    public void startOfNextLine() {
+  /*  public Cursor moveToStartOfNextLine() {
         down(1);
-        x(0);
-    }
+        col(0);
+        return this;
+    } */
 }

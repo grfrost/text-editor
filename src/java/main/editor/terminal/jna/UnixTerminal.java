@@ -48,7 +48,7 @@ public class UnixTerminal implements ANISTerminal<UnixTerminal> {
             System.err.println("ioctl failed with return code[={}]" + rc);
             System.exit(1);
         }
-        return new WindowSize(winsize.ws_row, winsize.ws_col);
+        return WindowSize.of(winsize.ws_row, winsize.ws_col);
     }
 
 

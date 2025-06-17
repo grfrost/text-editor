@@ -109,10 +109,7 @@ public class JlineTerminal implements ANISTerminal<JlineTerminal> {
 
     @Override
     public WindowSize getWindowSize() {
-        var height = terminal.getHeight();
-        var width = terminal.getWidth();
-        System.out.println("Size height=" + height + " width" + width);
-        return new WindowSize(height, width);
+        return WindowSize.of( terminal.getHeight(),  terminal.getWidth());
     }
 
     @Override

@@ -53,8 +53,16 @@ public interface ANSI<T extends ANSI<T>> {
         c.accept(self());
         return reset();
     }
+    default T nextLine(){
+        escBrace("K\r\n");
+        return self();
+    }
 
-     class ANSIBuilder implements ANSI<ANSIBuilder>{
+   default T line(String prefix,String s){
+        return inv(_->write(prefix)).write(" ").write(s).nextLine();
+   }
+
+    class ANSIBuilder implements ANSI<ANSIBuilder>{
          final StringBuilder stringBuilder;
          public ANSIBuilder(StringBuilder stringBuilder) {
              this.stringBuilder = stringBuilder;
@@ -78,7 +86,7 @@ public interface ANSI<T extends ANSI<T>> {
         return write(s.repeat(count));
     }
 
-     default T fill(String s, int cols) {
+     default T fill(int cols, String s) {
          return write(s).repeat(" ",Math.max(0, cols - s.length()));
      }
     // https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797

@@ -57,7 +57,7 @@ public class MacOrUnixTerminal implements ANISTerminal<MacOrUnixTerminal> {
 
     @Override
     public WindowSize getWindowSize() {
-        return new WindowSize(size.ws_row(), size.ws_col());
+        return WindowSize.of(size.ws_row(), size.ws_col());
     }
 
     final Arena arena;
