@@ -38,9 +38,7 @@ public class Content implements RowColBounds<Content> {
         }
 
         public void deleteChar(Col<?> col) {
-            if (containsCol(col)) {
-                replace(new StringBuilder(text).deleteCharAt(col.col()).toString());
-            }
+            replace(new StringBuilder(text).deleteCharAt(col.col()).toString());
         }
 
         public void insertChar(Col<?> col, char c) {

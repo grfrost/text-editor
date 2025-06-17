@@ -87,7 +87,9 @@ public class Editor {
                     }
                 } else {
                     cursor.left();
-                    line.deleteChar(cursor);
+                    if (line.containsCol(cursor)) {
+                        line.deleteChar(cursor);
+                    }
                     status = Status.of("DEL CH in line");
                 }
 
