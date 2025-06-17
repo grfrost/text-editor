@@ -2,7 +2,7 @@ package editor;
 
 import editor.terminal.ANISTerminal;
 import editor.terminal.WindowSize;
-import editor.terminal.jline.JlineTerminal;
+import editor.terminal.JlineTerminal;
 
 import java.io.IOException;
 import java.nio.file.Path;

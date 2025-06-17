@@ -1,7 +1,5 @@
-package editor.terminal.jline;
+package editor.terminal;
 
-import editor.terminal.ANISTerminal;
-import editor.terminal.WindowSize;
 import jdk.internal.org.jline.terminal.Attributes;
 import jdk.internal.org.jline.terminal.Terminal;
 import jdk.internal.org.jline.terminal.TerminalBuilder;
