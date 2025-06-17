@@ -4,6 +4,8 @@ elif [  -f ~/github/babylon-grfrost-fork/build/macosx-aarch64-server-release/jdk
    export JAVAC=~/github/babylon-grfrost-fork/build/macosx-aarch64-server-release/jdk/bin/javac
 fi
 
+# --class-path thirdparty/jna-5.17.0.jar
+
 ${JAVAC} \
    --add-modules jdk.internal.le \
    --add-exports jdk.internal.le/jdk.internal.org.jline.terminal=ALL-UNNAMED \
@@ -11,5 +13,4 @@ ${JAVAC} \
    -d out/production/text-editor-tutorial \
    -g \
    --source-path src/java/main \
-   --class-path thirdparty/jna-5.17.0.jar\
    src/java/main/editor/Editor.java 
