@@ -50,7 +50,7 @@ public class Content implements RowColBounds<Content> {
         }
     }
 
-    private Line lineAt(int row) {
+    Line lineAt(int row) {
         return containsRow(row) ? c.get(row) : null;
     }
 

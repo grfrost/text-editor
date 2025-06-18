@@ -22,4 +22,7 @@ public interface ColBounds<T extends ColBounds<T>>  {
     default int width() {
         return maxCol() - minCol();
     }
+    default int col(Col<?> c){
+        return c.col() - minCol();
+    }
 }

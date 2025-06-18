@@ -1,20 +1,15 @@
-package editor.terminal;
+package editor;
 
 import jdk.internal.org.jline.terminal.Attributes;
 import jdk.internal.org.jline.terminal.Terminal;
 import jdk.internal.org.jline.terminal.TerminalBuilder;
-import jdk.internal.org.jline.utils.NonBlockingReader;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.EnumSet;
+import java.util.function.Supplier;
 
-public class JlineTerminal implements ANISTerminal<JlineTerminal> {
-    @Override
-    public boolean isatty() {
-        return true;
-    }
-
+public class ANSITerminal implements  ANSI<ANSITerminal>, RowColBounds<ANSITerminal>, Supplier<Integer>,RowCol<ANSITerminal> {
     String get(Attributes a) {
         StringBuilder sb = new StringBuilder();
         EnumSet<?> o = a.getOutputFlags();
@@ -47,8 +42,7 @@ public class JlineTerminal implements ANISTerminal<JlineTerminal> {
     Attributes cooked;
     Attributes raw;
 
-    @Override
-    public JlineTerminal enableRawMode() {
+    public ANSITerminal raw() {
         cooked = terminal.getAttributes();
         raw = terminal.getAttributes();
         //   raw.copy(cooked);
@@ -72,16 +66,6 @@ public class JlineTerminal implements ANISTerminal<JlineTerminal> {
         return this;
     }
 
-    public JlineTerminal clearScreen() {
-        esc("[2J");
-
-        return self();
-    }
-
-    public JlineTerminal cursorHome() {
-        esc("[H");
-        return self();
-    }
 
     public void getMouse() {
         if (terminal.hasMouseSupport()) {
@@ -99,49 +83,112 @@ public class JlineTerminal implements ANISTerminal<JlineTerminal> {
         }
     }
 
-    @Override
-    public JlineTerminal disableRawMode() {
+
+    public ANSITerminal cooked() {
         terminal.setAttributes(cooked);
         return this;
     }
 
     @Override
-    public WindowSize getWindowSize() {
-        return WindowSize.of( terminal.getHeight(),  terminal.getWidth());
+    public int minRow(){
+        return 0;
     }
 
     @Override
-    public int read() {
+    public int maxRow(){
+        return  terminal.getHeight();
+    }
+    @Override
+    public int minCol(){
+        return 0;
+    }
+
+    @Override
+    public int maxCol(){
+        return  terminal.getWidth();
+    }
+
+
+    @Override
+    public Integer get() {
         try {
-            NonBlockingReader reader = terminal.reader();
-            int i = reader.read();
-            return i;
+            return terminal.reader().read();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public JlineTerminal write(String s) {
+    public ANSITerminal apply(String s) {
         terminal.writer().write(s);
+        return self();
+    }
+
+    public ANSITerminal flush() {
         terminal.writer().flush();
         return self();
     }
 
-    Terminal terminal;
+    private Terminal terminal;
+    int row;
+    int col;
+    @Override public int row(){return row;}
+    @Override public int col(){return col;}
+    @Override public ANSITerminal row(int r){row=r;return self();}
+    @Override public ANSITerminal col(int c){col=c;return self();}
 
-    public JlineTerminal() throws IOException {
-        TerminalBuilder builder = TerminalBuilder.builder();
-        this.terminal = builder.encoding(Charset.defaultCharset())
+    public ANSITerminal() throws IOException {
+        this.terminal = TerminalBuilder.builder().encoding(Charset.defaultCharset())
                 .exec(false)
                 .ffm(true)
                 .nativeSignals(false)
                 .systemOutput(TerminalBuilder.builder().computeSystemOutput())
                 .build();
+    }
+   // https://github.com/cronvel/terminal-kit/blob/master/lib/termconfig/xterm.js#L212-L224
+    ANSITerminal blink(){
+        return csiQuery().ints(2).apply("c");
+    }
+    ANSITerminal block(){
+        return csiQuery().ints(6).apply("c");
+    }
+    ANSITerminal saveCursorPos(){
+        return csi().apply("s");
+    }
+    ANSITerminal restoreCursorPos(){
+        return csi().apply("u");
+    }
 
+    ANSITerminal redCursor(){
+        //2 = underline
+        //0 default
+        //1 invisible
+        return csiQuery().ints(2,0,0).apply("c");
+    }
 
-        System.out.println(terminal.getClass().getSimpleName());
+    /*
+    To get normal blinking underline, use::
 
+	echo -e '\033[?2c'
 
+To get blinking block, use::
+
+	echo -e '\033[?6c'
+
+To get red non-blinking block, use::
+
+	echo -e '\033[?17;0;64c'
+     */
+
+     String getCursor(){
+        flush();
+        csi().ints(6).apply("n");
+        flush();
+        char[] response=new  char[20];
+        int len=0;
+        while(len<response.length && (response[len]=(char)get().intValue())!='R'){
+            len++;
+        }
+        return new String(response,0,len);
     }
 }
