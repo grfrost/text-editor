@@ -7,11 +7,11 @@ public class Editor {
 
     public static void main(String[] args) throws IOException {
 
-        ANSITerminal ansiTerminal = new ANSITerminal().raw();
+        ANSITerminal terminal = new ANSITerminal().raw();
         Path path = Path.of(args[0]);
-        Cursor cursor = Cursor.of();
         if (Content.of(path) instanceof Content content) {
 
+            Cursor<Content> cursor = Cursor.of(content);
             int leftmargin = 12;// Line # + line len
             int statusHeight = 1;
 
@@ -21,7 +21,7 @@ public class Editor {
                 private String status;
 
                 State() {
-                    viewport = Viewport.of(ansiTerminal.maxRow() - (statusHeight-2), ansiTerminal.maxCol() - leftmargin);
+                    viewport = Viewport.of(terminal.maxRow() - (statusHeight-2), terminal.maxCol() - leftmargin);
                     status = "OK";
                     finished = false;
                 }
@@ -51,34 +51,33 @@ public class Editor {
 
             while (!state.finished()) {
                 state.track(cursor);
-                ansiTerminal.cursorHome().hideCursor();
+                terminal.cursorHome().hideCursor();
                 for (int row = state.viewport.minRow(); row < state.viewport.maxRow(); row++) {
                     if (content.lineAt(row) instanceof Content.Line line) {
-                        ansiTerminal.line(
+                        terminal.line(
                                 String.format("%-" + (leftmargin - 2) + "s",
                                         String.format("%4d %4d", row, line.maxCol())), state.viewport.clip(line.text())
                         );
                     } else {
-                        ansiTerminal.line("...........", "~");
+                        terminal.line("...........", "~");
                     }
                 }
-              //  ansiTerminal.inv(_ ->
-                        ansiTerminal.fill(ansiTerminal.maxCol(), ansiTerminal.maxDims()
-                                + " Lines:" + content.maxRow()
+                terminal.inv(_ ->
+                        terminal.fill(terminal.maxCol(), terminal.maxDims()
+                              //  + " Lines:" + content.maxRow()
                                 + " View " + state.viewport.dims()
                                 + " Curs " + cursor.rowColPos()
-                                + " Term " + ansiTerminal.rowColPos()
+                              //  + " Term " + terminal.rowColPos()
                                 + " Stat " + state.message()
-                        );
-               // );
+                                + " T.C " + terminal.getCursorLocation().rowColPos()
+                              //  + " T.M " + terminal.getMouseLocation().rowColPos()
+                        )
+               );
 
-                ansiTerminal.rowCol(state.viewport.row(cursor)+1, state.viewport.col(cursor) + leftmargin);
-             //   ansiTerminal.rowCol(5,20);
-                ansiTerminal.showCursor().redCursor();
-                ansiTerminal.flush();
-               // System.out.println("!!!"+ansiTerminal.getCursor()+"!!!");
+                terminal.rowCol(state.viewport.rowOffset(cursor)+1, state.viewport.colOffset(cursor) + leftmargin);
+                terminal.flush().showCursor();
 
-                Key key = Key.readAndMap(ansiTerminal);
+                Key key = Key.readAndMap(terminal);
 
                 if (key == Key.CtrlQ) {
                     state.stopEditing();
@@ -184,7 +183,7 @@ public class Editor {
                 }
             }
 
-            ansiTerminal.clearScreen().cursorHome().cooked().flush();
+            terminal.clearScreen().cursorHome().cooked().flush();
         }
     }
 }

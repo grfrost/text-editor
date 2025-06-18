@@ -16,7 +16,7 @@ public interface RowBounds<T extends RowBounds<T>> {
         return maxRow() - minRow();
     }
 
-    default int row(Row<?> r){
+    default int rowOffset(Row<?> r){
         return r.row() - minRow();
     }
 }

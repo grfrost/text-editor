@@ -1,92 +1,48 @@
 package editor;
 
-import jdk.internal.org.jline.terminal.Attributes;
+import jdk.internal.org.jline.terminal.MouseEvent;
 import jdk.internal.org.jline.terminal.Terminal;
-import jdk.internal.org.jline.terminal.TerminalBuilder;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.EnumSet;
 import java.util.function.Supplier;
 
 public class ANSITerminal implements  ANSI<ANSITerminal>, RowColBounds<ANSITerminal>, Supplier<Integer>,RowCol<ANSITerminal> {
-    String get(Attributes a) {
-        StringBuilder sb = new StringBuilder();
-        EnumSet<?> o = a.getOutputFlags();
-        sb.append("o{");
-        for (var flag : o) {
-            sb.append(flag).append(" ");
-        }
-        sb.append("},");
-        EnumSet<?> i = a.getInputFlags();
-        sb.append("i{");
-        for (var flag : i) {
-            sb.append(flag).append(" ");
-        }
-        sb.append("},");
-        var l = a.getLocalFlags();
-        sb.append("l{");
-        for (var flag : l) {
-            sb.append(flag).append(" ");
-        }
-        sb.append("},");
-        var c = a.getControlFlags();
-        sb.append("c{");
-        for (var flag : c) {
-            sb.append(flag).append(" ");
-        }
-        sb.append("}");
-        return sb.toString();
-    }
-
-    Attributes cooked;
-    Attributes raw;
+    final  jdk.internal.org.jline.terminal.Attributes cooked;
+    final jdk.internal.org.jline.terminal.Attributes raw;
 
     public ANSITerminal raw() {
-        cooked = terminal.getAttributes();
-        raw = terminal.getAttributes();
-        //   raw.copy(cooked);
-        raw.setLocalFlag(Attributes.LocalFlag.ICANON, false);
-        raw.setLocalFlag(Attributes.LocalFlag.ECHO, false);
-        raw.setLocalFlag(Attributes.LocalFlag.IEXTEN, false);
-        raw.setLocalFlag(Attributes.LocalFlag.ISIG, false);
-
-        // termios.c_lflag &= ~(UnixTerminal.LibC.ECHO | UnixTerminal.LibC.ICANON | UnixTerminal.LibC.IEXTEN | UnixTerminal.LibC.ISIG);
-        raw.setInputFlag(Attributes.InputFlag.IXON, false);
-        raw.setInputFlag(Attributes.InputFlag.ICRNL, false);
-        //termios.c_iflag &= ~(UnixTerminal.LibC.IXON | UnixTerminal.LibC.ICRNL);
-        raw.setOutputFlag(Attributes.OutputFlag.OPOST, false);
-        //termios.c_oflag &= ~(UnixTerminal.LibC.OPOST);
         terminal.setAttributes(raw);
-        // raw = terminal.getAttributes();
-        String cookedString = get(cooked);
-        String rawString = get(raw);
-        System.out.println("raw: " + rawString);
-        System.out.println("cooked: " + cookedString);
-        return this;
+        return self();
     }
-
-
-    public void getMouse() {
-        if (terminal.hasMouseSupport()) {
+    public Location<ANSITerminal> getCursorLocation() {
 
             int[] pos = new int[1];
-            // terminal.enterRawMode();
-            var c = terminal.getCursorPosition(i -> {
+            var terminalCursor = terminal.getCursorPosition(i -> {
                 pos[0] = i;
             });
 
+            //  System.out.println(pos[0] + " " + terminalCursor.getX() + " " + terminalCursor.getY());
+            return Location.of(self(), terminalCursor.getY(),terminalCursor.getX());
 
-            System.out.println(pos[0] + " " + c.getX() + " " + c.getY());
-        } else {
-            System.out.println("No mouse support");
+    }
+
+    Location<ANSITerminal> mouseLocation;
+
+    public Location<ANSITerminal> getMouseLocation() {
+      //  int[] pos = new int[1];
+        MouseEvent me = terminal.readMouseEvent();
+        if (me == null) {
+            return null;
+        }else {
+            return Location.of(self(), me.getY(), me.getX());
         }
     }
 
 
     public ANSITerminal cooked() {
         terminal.setAttributes(cooked);
-        return this;
+        return self();
     }
 
     @Override
@@ -129,7 +85,7 @@ public class ANSITerminal implements  ANSI<ANSITerminal>, RowColBounds<ANSITermi
         return self();
     }
 
-    private Terminal terminal;
+    private jdk.internal.org.jline.terminal.Terminal terminal;
     int row;
     int col;
     @Override public int row(){return row;}
@@ -138,27 +94,43 @@ public class ANSITerminal implements  ANSI<ANSITerminal>, RowColBounds<ANSITermi
     @Override public ANSITerminal col(int c){col=c;return self();}
 
     public ANSITerminal() throws IOException {
-        this.terminal = TerminalBuilder.builder().encoding(Charset.defaultCharset())
+        this.terminal = jdk.internal.org.jline.terminal.TerminalBuilder.builder().encoding(Charset.defaultCharset())
                 .exec(false)
                 .ffm(true)
                 .nativeSignals(false)
-                .systemOutput(TerminalBuilder.builder().computeSystemOutput())
+              //  .systemOutput(TerminalBuilder.builder().computeSystemOutput())
                 .build();
+        cooked = terminal.getAttributes();
+        raw = terminal.getAttributes();
+        raw.setLocalFlag(jdk.internal.org.jline.terminal.Attributes.LocalFlag.ICANON, false);
+        raw.setLocalFlag(jdk.internal.org.jline.terminal.Attributes.LocalFlag.ECHO, false);
+        raw.setLocalFlag(jdk.internal.org.jline.terminal.Attributes.LocalFlag.IEXTEN, false);
+        raw.setLocalFlag(jdk.internal.org.jline.terminal.Attributes.LocalFlag.ISIG, false);
+        raw.setInputFlag(jdk.internal.org.jline.terminal.Attributes.InputFlag.IXON, false);
+        raw.setInputFlag(jdk.internal.org.jline.terminal.Attributes.InputFlag.ICRNL, false);
+        raw.setOutputFlag(jdk.internal.org.jline.terminal.Attributes.OutputFlag.OPOST, false);
+
+        if (terminal.hasMouseSupport()) {
+            Terminal.MouseTracking mouseTracking;
+            terminal.trackMouse( Terminal.MouseTracking.Button);
+        }
     }
-   // https://github.com/cronvel/terminal-kit/blob/master/lib/termconfig/xterm.js#L212-L224
-    ANSITerminal blink(){
-        return csiQuery().ints(2).apply("c");
-    }
-    ANSITerminal block(){
-        return csiQuery().ints(6).apply("c");
-    }
+
     ANSITerminal saveCursorPos(){
         return csi().apply("s");
     }
     ANSITerminal restoreCursorPos(){
         return csi().apply("u");
     }
-
+/*
+ // https://github.com/cronvel/terminal-kit/blob/master/lib/termconfig/xterm.js#L212-L224
+    /*
+    ANSITerminal blink(){
+        return csiQuery().ints(2).apply("c");
+    }
+    ANSITerminal block(){
+        return csiQuery().ints(6).apply("c");
+    }
     ANSITerminal redCursor(){
         //2 = underline
         //0 default
@@ -166,8 +138,7 @@ public class ANSITerminal implements  ANSI<ANSITerminal>, RowColBounds<ANSITermi
         return csiQuery().ints(2,0,0).apply("c");
     }
 
-    /*
-    To get normal blinking underline, use::
+        To get normal blinking underline, use::
 
 	echo -e '\033[?2c'
 
@@ -178,7 +149,7 @@ To get blinking block, use::
 To get red non-blinking block, use::
 
 	echo -e '\033[?17;0;64c'
-     */
+
 
      String getCursor(){
         flush();
@@ -190,5 +161,5 @@ To get red non-blinking block, use::
             len++;
         }
         return new String(response,0,len);
-    }
+    } */
 }
